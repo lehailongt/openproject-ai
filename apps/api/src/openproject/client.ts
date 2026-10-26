@@ -30,6 +30,7 @@ export interface WorkPackage {
   estimatedTime?: string;
   spentTime?: string;
   percentageDone?: number;
+  storyPoints?: number;
   lockVersion: number;
   _links?: Record<string, { href: string; title?: string }>;
 }
@@ -347,6 +348,16 @@ export class OpenProjectClient {
     return data;
   }
 
+  async getWorkPackageSchema(
+    projectId: number | string,
+    typeId: number | string,
+  ): Promise<any> {
+    const { data } = await this.http.get(
+      `/api/v3/work_packages/schemas/${projectId}-${typeId}`,
+    );
+    return data;
+  }
+
   async createWorkPackage(input: {
     subject: string;
     description?: string;
@@ -358,6 +369,7 @@ export class OpenProjectClient {
     startDate?: string;
     dueDate?: string;
     estimatedTime?: string;
+    storyPoints?: number;
     parentId?: number;
     versionId?: number;
   }): Promise<WorkPackage> {
@@ -384,6 +396,7 @@ export class OpenProjectClient {
     if (input.startDate) payload.startDate = input.startDate;
     if (input.dueDate) payload.dueDate = input.dueDate;
     if (input.estimatedTime) payload.estimatedTime = input.estimatedTime;
+    if (input.storyPoints !== undefined) payload.storyPoints = input.storyPoints;
 
     const { data } = await this.http.post<WorkPackage>(
       "/api/v3/work_packages",
@@ -404,6 +417,7 @@ export class OpenProjectClient {
       startDate: string;
       dueDate: string;
       estimatedTime: string;
+      storyPoints: number;
       percentageDone: number;
       parentId: number;
       versionId: number;
@@ -433,6 +447,8 @@ export class OpenProjectClient {
     if (input.dueDate !== undefined) payload.dueDate = input.dueDate;
     if (input.estimatedTime !== undefined)
       payload.estimatedTime = input.estimatedTime;
+    if (input.storyPoints !== undefined)
+      payload.storyPoints = input.storyPoints;
     if (input.percentageDone !== undefined)
       payload.percentageDone = input.percentageDone;
     if (input.lockVersion !== undefined)
