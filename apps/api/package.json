@@ -9,7 +9,8 @@
     "build": "tsc -p tsconfig.json",
     "backend": "tsx watch src/index.ts",
     "mcp": "tsx src/mcp/server.ts",
-    "ai": "npx tsx src/ai.ts"
+    "ai": "npx tsx src/ai.ts",
+    "import:jira": "tsx scripts/import-jira-csv.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.82",

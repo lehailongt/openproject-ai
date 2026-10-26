@@ -1,16 +1,16 @@
-import 'dotenv/config'
+﻿import 'dotenv/config'
 
 function required(name: string): string {
-  const v = process.env[name];
-  if (!v) throw new Error(`Missing env: ${name}`);
-  return v;
+  const value = process.env[name]?.trim()
+  if (!value) throw new Error(`Missing env: ${name}`)
+  return value
 }
 
 export const env = {
-  port: Number(process.env.PORT ?? 3001),
-  openprojectUrl: required('OPENPROJECT_URL'),
-  openprojectToken: required('OPENPROJECT_SERVICE_TOKEN'),
+  port: Number(process.env.API_PORT ?? process.env.PORT ?? 3001),
+  openprojectUrl: required('OPENPROJECT_BASE_URL'),
+  openprojectToken: required('OPENPROJECT_API_TOKEN'),
   openprojectInstanceId: required('OPENPROJECT_INSTANCE_ID'),
-  dbPath: process.env.DB_PATH ?? './runtime/app.db',
-  nodeEnv: process.env.DB_PATH ?? 'development',
-};
+  dbPath: process.env.SQLITE_PATH ?? './runtime/app.sqlite',
+  nodeEnv: process.env.NODE_ENV ?? 'development',
+}
