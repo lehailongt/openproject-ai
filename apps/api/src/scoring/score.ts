@@ -226,3 +226,85 @@ export function aggregatePersonScores(results: ScoreTaskResult[]): PersonScore[]
   }
   return [...byUser.values()].sort((a, b) => a.userId - b.userId);
 }
+
+// ---------------------------------------------------------------------------
+// C02 — Score runs: one score per workPackageId per period.
+// This is the layer C04 will call with a whole period's tasks, and the
+// layer C02 tests. It is additive: it only composes scoreTask() and
+// aggregatePersonScores(), it changes no C01 rule.
+// Rules:
+//  - REOPEN / DUPLICATES: tasks are de-duplicated by workPackageId and
+//    the LAST occurrence wins. The caller (B's data prep / C04) must pass
+//    tasks in chronological order, so "last" means "latest state". A task
+//    that was DONE, reopened, and DONE again therefore counts exactly
+//    once, with its latest DONE state; a task still open at period end
+//    (last state not DONE) is skipped with reason 'not-done', not scored.
+//  - MISSING DATA AT RUN LEVEL: a task that scoreTask() rejects is listed
+//    in `skipped` with its exact reason and contributes nothing — never a
+//    silent 0. `incomplete` is true iff at least one task was skipped, so
+//    the UI can show "kỳ chưa đủ dữ liệu" instead of a misleading total.
+//  - REPRODUCIBILITY: same task list => same totals, scored list and
+//    skipped list. `ruleVersion` and `asOf` are recorded metadata only:
+//    this function always computes with the c01-v1 rules above; a rule
+//    change needs a new function version, not a different label.
+//  - An empty period is NOT incomplete: totals [], totalScore 0, and
+//    incomplete false (nothing was missing, there was simply nothing).
+// ---------------------------------------------------------------------------
+
+export interface ScoreRunInput {
+  tasks: TaskScoreInput[];
+  /** Defaults to RULE_VERSION ('c01-v1'). Metadata only, see above. */
+  ruleVersion?: string;
+  /** Period snapshot time, e.g. an ISO timestamp. Metadata only. */
+  asOf?: string | null;
+  projectId?: number | null;
+}
+
+export interface SkippedTask {
+  workPackageId: number;
+  reason: InsufficientReason;
+}
+
+export interface ScoredTask {
+  workPackageId: number;
+  taskScore: number;
+}
+
+export interface ScoreRunResult {
+  ruleVersion: string;
+  asOf: string | null;
+  projectId: number | null;
+  totals: PersonScore[];
+  scored: ScoredTask[];
+  skipped: SkippedTask[];
+  scoredTaskCount: number;
+  skippedTaskCount: number;
+  incomplete: boolean;
+  totalScore: number;
+}
+
+export function scoreRun(input: ScoreRunInput): ScoreRunResult {
+  const deduped = new Map<number, TaskScoreInput>();
+  for (const task of input.tasks) deduped.set(task.workPackageId, task);
+  const results = [...deduped.values()].map((task) => scoreTask(task));
+
+  const scored: ScoredTask[] = [];
+  const skipped: SkippedTask[] = [];
+  for (const r of results) {
+    if (r.ok) scored.push({ workPackageId: r.workPackageId, taskScore: r.taskScore });
+    else skipped.push({ workPackageId: r.workPackageId, reason: r.reason });
+  }
+  const totals = aggregatePersonScores(results);
+  return {
+    ruleVersion: input.ruleVersion ?? RULE_VERSION,
+    asOf: input.asOf ?? null,
+    projectId: input.projectId ?? null,
+    totals,
+    scored,
+    skipped,
+    scoredTaskCount: scored.length,
+    skippedTaskCount: skipped.length,
+    incomplete: skipped.length > 0,
+    totalScore: scored.reduce((sum, s) => sum + s.taskScore, 0),
+  };
+}
